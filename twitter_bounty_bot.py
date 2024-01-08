@@ -51,8 +51,7 @@ class TwitterBot:
 
     # Generate a response using the language model using the template we reviewed in the jupyter notebook (see README)
     def generate_response(self, mentioned_conversation_tweet_text):
-        # It would be nice to bring in information about the links, pictures, etc. But out of scope for now
-        # Edit this prompt for your own personality!
+
         system_template = """
             You are a Twitter Bounty Bot, users will tag you on twitter in a tweet with all details provided regarding a bounty they are posting.
             You have to understand the text provided and parse the tweet into the following varaibles.
@@ -60,13 +59,13 @@ class TwitterBot:
             % RESPONSE FORMAT:
             The response must be a JSON object, with the below fields populated from the text given.
 
-            1. Bounty Amount. (Required Field)
-            2. Task for the Bounty. (Required Field)
-            3. Deadline for the Bounty. (Required Field)
-            4. Max number of users that can win the bounty. (Required Field, but in case it is not mentioned in the text, assume as 1)
+            1. Amount. (Required Field)
+            2. Task. (Required Field)
+            3. Deadline. (Required Field)
+            4. Max claims. (Required Field, but in case it is not mentioned in the text, assume as 1)
 
-            If there is any missing information, then the response must be;
-            "Please provide all the necessary information, to continue."
+            If there is any missing information, then the response for that particular field must be;
+            "NA"
         """
 
         system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
@@ -99,8 +98,8 @@ class TwitterBot:
         
         # Log the response in airtable if it was successful
         # self.airtable.insert({
-        #     'mentioned_conversation_tweet_id': str(mentioned_conversation_tweet.id),
-        #     'mentioned_conversation_tweet_text': mentioned_conversation_tweet.text,
+        #     'mentioned_tweet_id': str(mention.id),
+        #     'mentioned_tweet_text': mention.text,
         #     'tweet_response_id': response_tweet.data['id'],
         #     'tweet_response_text': response_text,
         #     'tweet_response_created_at' : datetime.utcnow().isoformat(),
@@ -112,14 +111,13 @@ class TwitterBot:
     def get_me_id(self):
         return self.twitter_api.get_me()[0].id
     
-    # Returns the parent tweet text of a mention if it exists. Otherwise returns None
-    # We use this to since we want to respond to the parent tweet, not the mention itself
-    def get_mention_conversation_tweet(self, mention):
-        # Check to see if mention has a field 'conversation_id' and if it's not null
-        if mention.conversation_id is not None:
-            conversation_tweet = self.twitter_api.get_tweet(mention.conversation_id).data
-            return conversation_tweet
-        return None
+   
+    # def get_mention_conversation_tweet(self, mention):
+    #     # Check to see if mention has a field 'conversation_id' and if it's not null
+    #     if mention.conversation_id is not None:
+    #         conversation_tweet = self.twitter_api.get_tweet(mention.conversation_id).data
+    #         return conversation_tweet
+    #     return None
 
     # Get mentioned to the user thats authenticated and running the bot.
     # Using a lookback window of 2 hours to avoid parsing over too many tweets
@@ -157,16 +155,13 @@ class TwitterBot:
             return
         
         self.mentions_found = len(mentions)
-
+        print(self.mentions_found," mentions found!")
         for mention in mentions[:self.tweet_response_limit]:
-            # # Getting the mention's conversation tweet
-            # mentioned_conversation_tweet = self.get_mention_conversation_tweet(mention)
             
-            # If the mention *is* the conversation or you've already responded, skip it and don't respond
+            # # If the mention *is* the conversation or you've already responded, skip it and don't respond
             # if (not self.check_already_responded(mention.id)):
-
-            #     self.respond_to_mention(mention, mentioned_conversation_tweet)
             self.respond_to_mention(mention)
+            
         return True
     
         # The main entry point for the bot with some logging
@@ -179,14 +174,7 @@ class TwitterBot:
 def job():
     print(f"Job executed at {datetime.utcnow().isoformat()}")
     bot = TwitterBot()
-    tweet_text = """  RECEIPTS BOUNTY ALERT 
-
-Cycle/bike at least 30km next week, attest on Receipts.xyz, and get $10 USDC! 🚴‍♂️
-
-$10 USDC per winner, total of 10 winners
-
-Start: 00:00 UTC, Monday Jan 1 
-End: 00:00 UTC, Monday Jan 8"""
+  
     bot.execute_replies()
 
     
